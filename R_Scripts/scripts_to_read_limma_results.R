@@ -1,7 +1,15 @@
 library(reshape2)
 library(graphics)
+library(devtools)
+library(limma)
+install_github("ggbiplot", "vqv")
+
+library(ggbiplot)
 
 WB_limma_results <- read.table(file = "Documents/Blood_OI_Limma_excl_duplicate_ID.tsv", sep = "\t", stringsAsFactors = FALSE , header = TRUE)
+
+WB_adjusted_cts <- WB_raw_cts <- read.table(file = "Documents/Limma_Adjusted_cts_excl_duplicate.tsv", sep = "\t", stringsAsFactors = FALSE , header = TRUE)
+WB_adjusted_cts <- cbind("element.id" = WB_adjusted_cts[,ncol(WB_adjusted_cts)], WB_adjusted_cts[,1:(ncol(WB_adjusted_cts)-1)])
 
 WB_raw_cts <- read.table(file = "Documents/WholeBloodCounts.tsv", sep = "\t", stringsAsFactors = FALSE , header = TRUE)
 
@@ -15,6 +23,8 @@ NK_raw_cts <- read.table(file = "Documents/POYFLIB-NKCELLcounts.tsv", sep = "\t"
 limma_results <- NK_limma_results_excl_outliers
 
 raw_cts <- NK_raw_cts
+
+adjusted_cts <- WB_adjusted_cts
 
 
 # Whole Blood Analysis
@@ -233,13 +243,34 @@ sig_gene_idx <- which(limma_results$adj.P.Val<0.20)
 sig_genes <- limma_results[sig_gene_idx,]$genes
 
 
-# Reshape data
+# Reshape data - raw counts
 mlt_raw_cts <- melt(raw_cts, id.vars = ("element.id"), variable.name = "sample.id", value.name = "count")
 group <- data.frame(group = ifelse(grepl(pattern = "CFS", x = mlt_raw_cts$sample.id),"CFS","CTL"))
 mlt_raw_cts <- cbind(mlt_raw_cts,group)
 
 dct_raw_cts <- dcast(mlt_raw_cts, sample.id + group ~ element.id, value.var = "count")
 by(dct_raw_cts[,sig_genes],dct_raw_cts$group,colMeans)
+
+# Reshape data - adjusted counts
+mlt_adj_cts <- melt(adjusted_cts, id.vars = ("element.id"), variable.name = "sample.id", value.name = "count")
+group <- data.frame(group = ifelse(grepl(pattern = "CFS", x = mlt_adj_cts$sample.id), "CFS", "CTL"))
+mlt_adj_cts <- cbind(mlt_adj_cts,group)
+
+dct_adj_cts <- dcast(mlt_adj_cts, sample.id + group ~ element.id, value.var = "count")
+
+# PCA
+
+adj_ct_values <- dct_adj_cts[,3:ncol(dct_adj_cts)]
+group <- dct_adj_cts[,"group"]
+
+pca_adj_cts <- prcomp(adj_ct_values, center = T, scale. = T)
+
+g <- ggbiplot(pca_adj_cts, obs.scale = 1, var.scale = 1, groups = group, ellipse = F, circle = F, var.axes = F)
+g <- g + theme(panel.background = element_rect(fill = 'white', colour = 'black'))
+print(g)
+
+adj_ct_values <- adjusted_cts[,2:ncol(adjusted_cts)]
+plotMDS(adj_ct_values, top = )
 
 
 par(mfrow = c(1,1))
