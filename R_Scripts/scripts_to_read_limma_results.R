@@ -22,7 +22,7 @@ NK_raw_cts <- read.table(file = "Documents/POYFLIB-NKCELLcounts.tsv", sep = "\t"
 
 limma_results <- NK_limma_results_excl_outliers
 
-raw_cts <- NK_raw_cts
+raw_cts <- WB_raw_cts
 
 adjusted_cts <- WB_adjusted_cts
 
@@ -269,9 +269,38 @@ g <- ggbiplot(pca_adj_cts, obs.scale = 1, var.scale = 1, groups = group, ellipse
 g <- g + theme(panel.background = element_rect(fill = 'white', colour = 'black'))
 print(g)
 
-adj_ct_values <- adjusted_cts[,2:ncol(adjusted_cts)]
-plotMDS(adj_ct_values, top = )
+names <- ifelse(test = grepl(pattern = "CFS", x = colnames(voom$E)), yes = "CFS", no = "CTL")
+plotMDS(voom, top = nrow(adjusted_cts), col = ifelse(names=="CFS","red","blue"), gene.selection = "common", pch = 19, cex = 0.7, xlab = "PC1", ylab = "PC2")
+plotMDS(adjusted_cts[,-1], top = nrow(adjusted_cts), col = ifelse(names=="CFS","red","blue"), gene.selection = "common", pch = 19, cex = 0.7, xlab = "PC1", ylab = "PC2")
 
+
+# Plot box plots
+
+gene <- c("ENSG00000002933", "TMEM176A")
+gene <- c("ENSG00000184956", "PI3")
+gene <- c("ENSG00000124102", "MUC6")
+gene <- c("ENSG00000012817", "KDMD5")
+
+t.test(dct_adj_cts[dct_adj_cts$group=="CTL",gene],dct_adj_cts[dct_adj_cts$group=="CFS" & dct_adj_cts[,gene] > 0.1, gene])
+wilcox.test(dct_adj_cts[dct_adj_cts$group=="CTL",gene] ,dct_adj_cts[dct_adj_cts$group=="CFS",gene])
+boxplot(dct_adj_cts$gene~group, data = dct_adj_cts)
+boxplot(dct_adj_cts$"ENSG00000002933"~group, data = dct_adj_cts)
+boxplot(dct_adj_cts$"ENSG00000124102"~group, data = dct_adj_cts)
+boxplot(dct_adj_cts$"ENSG00000184956"~group, data = dct_adj_cts)
+boxplot(dct_adj_cts$"ENSG00000012817"~group, data = dct_adj_cts)
+
+CFS_idx <- which(dct_adj_cts[,"group"] %in% c("CFS"))
+CTL_idx <- which(dct_adj_cts[,"group"] %in% c("CTL"))
+
+names <- c("CTL", "CFS")
+
+boxplot(dct_adj_cts[CTL_idx,gene[1]], dct_adj_cts[CFS_idx,gene[1]], names = names, col = c("blue", "red"), ylim = c(0,10), outline = F, main = gene[2])
+
+mean(dct_adj_cts[CFS_idx,gene]) - mean(dct_adj_cts[CTL_idx,gene])
+
+
+# TODO: change the below line to use constrasts from the limmaVoom statement:
+Blood_Ortho_Limma_Results <- data.table(topTable(fit3,coef=1, number=nrow(countsTable)))
 
 par(mfrow = c(1,1))
 # plot average counts across all samples
